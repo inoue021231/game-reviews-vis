@@ -35,6 +35,7 @@ const NodeLink = (props) => {
 
   const [newLinks, setNewLinks] = useState([]);
   const [newNode, setNewNode] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const nodes = Object.values(data).map((node, index) => ({
     id: index,
@@ -155,70 +156,86 @@ const NodeLink = (props) => {
       .force("charge", d3.forceManyBody().strength(-1000))
       .force("center", d3.forceCenter(width / 3, height / 2));
 
-    simulation.on("tick", () => {
-      setNewNode(
-        nodes.map((node) => {
-          return {
-            x: node.x,
-            y: node.y,
-            name: node.name,
-            header_image: node.header_image,
-            index: node.index,
-          };
-        })
-      );
+    let tickCount = 0;
 
-      setNewLinks(
-        links.map((link) => {
-          const selectFlag =
-            link.source.id === selectGameIdx ||
-            link.target.id === selectGameIdx;
-          return {
-            ...link,
-            color: selectFlag ? "skyblue" : "gray",
-            width: selectFlag
-              ? 0.008 *
+    simulation.on("tick", () => {
+      tickCount++;
+      if (tickCount >= 40) {
+        simulation.stop();
+        setNewNode(
+          nodes.map((node) => {
+            return {
+              x: node.x,
+              y: node.y,
+              name: node.name,
+              header_image: node.header_image,
+              index: node.index,
+            };
+          })
+        );
+
+        setNewLinks(
+          links.map((link) => {
+            const selectFlag =
+              link.source.id === selectGameIdx ||
+              link.target.id === selectGameIdx;
+            return {
+              ...link,
+              color: selectFlag ? "skyblue" : "gray",
+              width: selectFlag
+                ? 0.008 *
+                    (calcCommonGenres(link.source.genres, link.target.genres) +
+                      1) *
+                    calcWeight(link.source.TfIdf, link.target.TfIdf) +
+                  2
+                : 0.008 *
                   (calcCommonGenres(link.source.genres, link.target.genres) +
                     1) *
-                  calcWeight(link.source.TfIdf, link.target.TfIdf) +
-                2
-              : 0.008 *
-                (calcCommonGenres(link.source.genres, link.target.genres) + 1) *
-                calcWeight(link.source.TfIdf, link.target.TfIdf),
-          };
-        })
-      );
+                  calcWeight(link.source.TfIdf, link.target.TfIdf),
+            };
+          })
+        );
+        setIsLoading(false);
+      }
     });
   }, []);
 
   return (
-    <ZoomableSVG>
-      {newLinks.length !== 0 &&
-        newLinks.map((link, i) => (
-          <line
-            key={i}
-            className="link"
-            x1={link.source.x}
-            y1={link.source.y}
-            x2={link.target.x}
-            y2={link.target.y}
-            style={{ stroke: link.color, strokeWidth: link.width }}
-          />
-        ))}
-      {newNode.length !== 0 &&
-        newNode.map((node, i) => {
-          return (
-            <g transform={`translate(${node.x},${node.y})`} key={i}>
-              <Icon
-                name={node.name}
-                header_image={node.header_image}
-                index={node.index}
-                setSelectGameIdx={setSelectGameIdx}
-              ></Icon>
-            </g>
-          );
-        })}
-    </ZoomableSVG>
+    <g>
+      {isLoading ? (
+        <text x="0" y="0">
+          Loading...
+        </text>
+      ) : (
+        <ZoomableSVG>
+          {newLinks.length !== 0 &&
+            newLinks.map((link, i) => (
+              <line
+                key={i}
+                className="link"
+                x1={link.source.x}
+                y1={link.source.y}
+                x2={link.target.x}
+                y2={link.target.y}
+                style={{ stroke: link.color, strokeWidth: link.width }}
+              />
+            ))}
+          {newNode.length !== 0 &&
+            newNode.map((node, i) => {
+              return (
+                <g transform={`translate(${node.x},${node.y})`} key={i}>
+                  <Icon
+                    name={node.name}
+                    header_image={node.header_image}
+                    index={node.index}
+                    setSelectGameIdx={setSelectGameIdx}
+                  ></Icon>
+                </g>
+              );
+            })}
+        </ZoomableSVG>
+      )}
+    </g>
   );
 };
 
